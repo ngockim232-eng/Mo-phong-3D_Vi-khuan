@@ -1,0 +1,319 @@
+{
+  "entities": {
+    "ClassRoster": {
+      "title": "ClassRoster",
+      "description": "A school class roster created and managed by the authenticated teacher, containing the grade level, class name, and list of enrolled student names.",
+      "type": "object",
+      "properties": {
+        "teacherUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the authenticated teacher who created this class.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "className": {
+          "type": "string",
+          "description": "Class name (e.g., 6A1, 6A2, 7B).",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "grade": {
+          "type": "integer",
+          "description": "Middle school grade level (6, 7, 8, or 9)."
+        },
+        "students": {
+          "type": "array",
+          "description": "Bounded list (1 to 60) of student full names in this class."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether this class is active and selectable by students."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the class roster was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the class roster was last updated."
+        }
+      },
+      "required": [
+        "teacherUid",
+        "className",
+        "grade",
+        "students",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "StudentSubmission": {
+      "title": "StudentSubmission",
+      "description": "A challenge submission submitted by a student (no login required) verified against an active teacher-created ClassRoster. Contains zero PII.",
+      "type": "object",
+      "properties": {
+        "classId": {
+          "type": "string",
+          "description": "Document ID of the parent ClassRoster in /classes/{classId}.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "className": {
+          "type": "string",
+          "description": "Class name matching the parent ClassRoster.",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "grade": {
+          "type": "integer",
+          "description": "Grade level (6 to 9) matching the parent ClassRoster."
+        },
+        "studentName": {
+          "type": "string",
+          "description": "Student full name verified against the parent ClassRoster.students list.",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "score": {
+          "type": "integer",
+          "description": "Total challenge competition score (0 to 5000)."
+        },
+        "correctCount": {
+          "type": "integer",
+          "description": "Number of unique challenges answered correctly (0 to 200)."
+        },
+        "totalQuestions": {
+          "type": "integer",
+          "description": "Total challenge questions available (1 to 200)."
+        },
+        "accuracy": {
+          "type": "integer",
+          "description": "Answer accuracy percentage (0 to 100)."
+        },
+        "bestStreak": {
+          "type": "integer",
+          "description": "Best consecutive correct answer streak (0 to 200)."
+        },
+        "durationSec": {
+          "type": "integer",
+          "description": "Total time spent completing the challenge in seconds (1 to 7200)."
+        },
+        "completedSections": {
+          "type": "array",
+          "description": "Bounded list of completed challenge sections (dragdrop, shape, quiz, function, custom)."
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "Whether this submission is visible on class and grade leaderboards."
+        },
+        "submittedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the student submitted their answers."
+        }
+      },
+      "required": [
+        "classId",
+        "className",
+        "grade",
+        "studentName",
+        "score",
+        "correctCount",
+        "totalQuestions",
+        "accuracy",
+        "bestStreak",
+        "durationSec",
+        "completedSections",
+        "isPublic",
+        "submittedAt"
+      ]
+    },
+    "QuestionType": {
+      "title": "QuestionType",
+      "description": "A teacher-created custom question category/type displayed as an additional stage in the Student Challenge.",
+      "type": "object",
+      "properties": {
+        "teacherUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the teacher who created this question type.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Display title of the question category (e.g., Đúng / Sai, Vai trò của vi khuẩn).",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string",
+          "description": "Short guidance or description shown to students.",
+          "minLength": 0,
+          "maxLength": 200
+        },
+        "format": {
+          "type": "string",
+          "enum": ["multiple_choice", "true_false"],
+          "description": "Answer interaction format for questions in this category."
+        },
+        "pointsPerQuestion": {
+          "type": "integer",
+          "description": "Default score awarded per correct question in this category (5 to 50)."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether this category is visible to students in the Challenge."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when last updated."
+        }
+      },
+      "required": [
+        "teacherUid",
+        "title",
+        "description",
+        "format",
+        "pointsPerQuestion",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CustomQuestion": {
+      "title": "CustomQuestion",
+      "description": "A teacher-authored question belonging to either the built-in quiz category or a custom QuestionType.",
+      "type": "object",
+      "properties": {
+        "teacherUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the teacher who created this question.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Category ID ('quiz' for built-in multiple choice or a QuestionType document ID).",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "question": {
+          "type": "string",
+          "description": "Question prompt text shown to students.",
+          "minLength": 5,
+          "maxLength": 400
+        },
+        "options": {
+          "type": "array",
+          "description": "Bounded list of 2 to 4 answer choice strings."
+        },
+        "correctIndex": {
+          "type": "integer",
+          "description": "Zero-based index of the correct answer in options (0 to 3)."
+        },
+        "hint": {
+          "type": "string",
+          "description": "Optional hint displayed when a student answers incorrectly.",
+          "minLength": 0,
+          "maxLength": 250
+        },
+        "explanation": {
+          "type": "string",
+          "description": "Optional explanation displayed when a student answers correctly.",
+          "minLength": 0,
+          "maxLength": 300
+        },
+        "points": {
+          "type": "integer",
+          "description": "Score awarded for answering this question correctly (5 to 50)."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether this question is active and shown to students."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when last updated."
+        }
+      },
+      "required": [
+        "teacherUid",
+        "categoryId",
+        "question",
+        "options",
+        "correctIndex",
+        "hint",
+        "explanation",
+        "points",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Locked legacy registry; single-account teacher authorization is enforced strictly via verified Gmail.",
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": ["admin"],
+          "description": "Role strictly set to admin."
+        }
+      },
+      "required": ["role"]
+    }
+  },
+  "firestore": {
+    "/classes/{classId}": {
+      "schema": {
+        "$ref": "#/entities/ClassRoster"
+      },
+      "description": "Active class rosters created by the teacher; readable by students to pick their class and name."
+    },
+    "/submissions/{submissionId}": {
+      "schema": {
+        "$ref": "#/entities/StudentSubmission"
+      },
+      "description": "Student challenge submissions verified against an active ClassRoster."
+    },
+    "/question_types/{typeId}": {
+      "schema": {
+        "$ref": "#/entities/QuestionType"
+      },
+      "description": "Teacher-created custom question categories readable by students in the Challenge."
+    },
+    "/questions/{questionId}": {
+      "schema": {
+        "$ref": "#/entities/CustomQuestion"
+      },
+      "description": "Teacher-created custom questions readable by students in the Challenge."
+    },
+    "/admins/{adminUid}": {
+      "schema": {
+        "$ref": "#/entities/AdminRecord"
+      },
+      "description": "Locked legacy registry."
+    }
+  }
+}

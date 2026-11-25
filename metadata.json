@@ -1,0 +1,6 @@
+{
+  "name": "Thế Giới Vi Khuẩn 3D",
+  "description": "Ứng dụng web giáo dục 3D trực quan giúp học sinh THCS khám phá sự đa dạng, hình dạng, cấu tạo tế bào, vai trò và quá trình phân đôi của vi khuẩn.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

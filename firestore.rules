@@ -1,0 +1,356 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Hardened global primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    // Strictly restrict Teacher access to the single authorized Gmail account
+    function isTeacher() {
+      return isVerifiedUser() && request.auth.token.email == 'ngockim232@gmail.com';
+    }
+
+    // Validation Blueprint 1: ClassRoster
+    function isValidStudentList(students) {
+      return students is list
+        && students.size() >= 1
+        && students.size() <= 60
+        && students[0] is string
+        && students[0].size() >= 2
+        && students[0].size() <= 60;
+    }
+
+    function isValidClassRoster(data) {
+      return data.keys().hasAll([
+          'teacherUid',
+          'className',
+          'grade',
+          'students',
+          'isActive',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'teacherUid',
+          'className',
+          'grade',
+          'students',
+          'isActive',
+          'createdAt',
+          'updatedAt'
+        ])
+        && isValidId(data.teacherUid)
+        && data.className is string && data.className.size() >= 1 && data.className.size() <= 20
+        && data.grade is int && data.grade >= 6 && data.grade <= 9
+        && isValidStudentList(data.students)
+        && data.isActive is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint 2: StudentSubmission
+    function isValidCompletedSections(sections) {
+      return sections is list
+        && sections.size() <= 5
+        && sections.hasOnly(['dragdrop', 'shape', 'quiz', 'function', 'custom'])
+        && (sections.size() == 0 || sections[0] is string);
+    }
+
+    function isValidSubmission(data) {
+      return data.keys().hasAll([
+          'classId',
+          'className',
+          'grade',
+          'studentName',
+          'score',
+          'correctCount',
+          'totalQuestions',
+          'accuracy',
+          'bestStreak',
+          'durationSec',
+          'completedSections',
+          'isPublic',
+          'submittedAt'
+        ])
+        && data.keys().hasOnly([
+          'classId',
+          'className',
+          'grade',
+          'studentName',
+          'score',
+          'correctCount',
+          'totalQuestions',
+          'accuracy',
+          'bestStreak',
+          'durationSec',
+          'completedSections',
+          'isPublic',
+          'submittedAt'
+        ])
+        && isValidId(data.classId)
+        && data.className is string && data.className.size() >= 1 && data.className.size() <= 20
+        && data.grade is int && data.grade >= 6 && data.grade <= 9
+        && data.studentName is string && data.studentName.size() >= 2 && data.studentName.size() <= 60
+        && data.score is int && data.score >= 0 && data.score <= 5000
+        && data.correctCount is int && data.correctCount >= 0 && data.correctCount <= 200
+        && data.totalQuestions is int && data.totalQuestions >= 1 && data.totalQuestions <= 200
+        && data.correctCount <= data.totalQuestions
+        && data.accuracy is int && data.accuracy >= 0 && data.accuracy <= 100
+        && data.bestStreak is int && data.bestStreak >= 0 && data.bestStreak <= 200
+        && data.durationSec is int && data.durationSec >= 1 && data.durationSec <= 7200
+        && isValidCompletedSections(data.completedSections)
+        && data.isPublic == true
+        && data.submittedAt is timestamp;
+    }
+
+    // Validation Blueprint 3: QuestionType (Teacher custom question categories)
+    function isValidQuestionType(data) {
+      return data.keys().hasAll([
+          'teacherUid',
+          'title',
+          'description',
+          'format',
+          'pointsPerQuestion',
+          'isActive',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'teacherUid',
+          'title',
+          'description',
+          'format',
+          'pointsPerQuestion',
+          'isActive',
+          'createdAt',
+          'updatedAt'
+        ])
+        && isValidId(data.teacherUid)
+        && data.title is string && data.title.size() >= 2 && data.title.size() <= 80
+        && data.description is string && data.description.size() <= 200
+        && data.format in ['multiple_choice', 'true_false']
+        && data.pointsPerQuestion is int && data.pointsPerQuestion >= 5 && data.pointsPerQuestion <= 50
+        && data.isActive is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint 4: CustomQuestion (Teacher-authored questions)
+    function isValidOptionsList(options) {
+      return options is list
+        && options.size() >= 2
+        && options.size() <= 4
+        && options[0] is string && options[0].size() >= 1 && options[0].size() <= 200
+        && options[1] is string && options[1].size() >= 1 && options[1].size() <= 200;
+    }
+
+    function isValidCustomQuestion(data) {
+      return data.keys().hasAll([
+          'teacherUid',
+          'categoryId',
+          'question',
+          'options',
+          'correctIndex',
+          'hint',
+          'explanation',
+          'points',
+          'isActive',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'teacherUid',
+          'categoryId',
+          'question',
+          'options',
+          'correctIndex',
+          'hint',
+          'explanation',
+          'points',
+          'isActive',
+          'createdAt',
+          'updatedAt'
+        ])
+        && isValidId(data.teacherUid)
+        && isValidId(data.categoryId)
+        && data.question is string && data.question.size() >= 5 && data.question.size() <= 400
+        && isValidOptionsList(data.options)
+        && data.correctIndex is int && data.correctIndex >= 0 && data.correctIndex < data.options.size()
+        && data.hint is string && data.hint.size() <= 250
+        && data.explanation is string && data.explanation.size() <= 300
+        && data.points is int && data.points >= 5 && data.points <= 50
+        && data.isActive is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function hasValidQuestionCategory(categoryId) {
+      return categoryId == 'quiz'
+        || exists(/databases/$(database)/documents/question_types/$(categoryId));
+    }
+
+    // Relational gate: verify student belongs to an existing active teacher-created class
+    function matchesActiveClassRoster(data) {
+      let classPath = /databases/$(database)/documents/classes/$(data.classId);
+      return exists(classPath)
+        && get(classPath).data.isActive == true
+        && get(classPath).data.className == data.className
+        && get(classPath).data.grade == data.grade
+        && data.studentName in get(classPath).data.students;
+    }
+
+    // Collection 1: Teacher-Managed Class Rosters
+    match /classes/{classId} {
+      allow get: if isValidId(classId) && (existing().isActive == true || isTeacher());
+      allow list: if existing().isActive == true;
+
+      allow create: if isTeacher()
+        && isValidId(classId)
+        && isValidClassRoster(incoming())
+        && incoming().teacherUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isTeacher()
+        && isValidId(classId)
+        && isValidClassRoster(incoming())
+        && incoming().teacherUid == existing().teacherUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'className',
+          'grade',
+          'students',
+          'isActive',
+          'updatedAt'
+        ]);
+
+      allow delete: if isTeacher() && isValidId(classId);
+    }
+
+    // Collection 2: Roster-Verified Student Submissions (Students do not need to log in)
+    match /submissions/{submissionId} {
+      allow get: if isValidId(submissionId) && (existing().isPublic == true || isTeacher());
+      allow list: if existing().isPublic == true;
+
+      allow create: if isValidId(submissionId)
+        && isValidSubmission(incoming())
+        && incoming().submittedAt == request.time
+        && matchesActiveClassRoster(incoming());
+
+      allow update: if isTeacher()
+        && isValidId(submissionId)
+        && isValidSubmission(incoming())
+        && incoming().classId == existing().classId
+        && incoming().submittedAt == existing().submittedAt
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'className',
+          'grade',
+          'studentName',
+          'score',
+          'correctCount',
+          'totalQuestions',
+          'accuracy',
+          'bestStreak',
+          'durationSec',
+          'completedSections',
+          'isPublic'
+        ]);
+
+      allow delete: if isTeacher() && isValidId(submissionId);
+    }
+
+    // Collection 3: Teacher-Created Custom Question Types
+    match /question_types/{typeId} {
+      allow get: if isValidId(typeId) && (existing().isActive == true || isTeacher());
+      allow list: if existing().isActive == true;
+
+      allow create: if isTeacher()
+        && isValidId(typeId)
+        && isValidQuestionType(incoming())
+        && incoming().teacherUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isTeacher()
+        && isValidId(typeId)
+        && isValidQuestionType(incoming())
+        && incoming().teacherUid == existing().teacherUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title',
+          'description',
+          'format',
+          'pointsPerQuestion',
+          'isActive',
+          'updatedAt'
+        ]);
+
+      allow delete: if isTeacher() && isValidId(typeId);
+    }
+
+    // Collection 4: Teacher-Created Custom Questions
+    match /questions/{questionId} {
+      allow get: if isValidId(questionId) && (existing().isActive == true || isTeacher());
+      allow list: if existing().isActive == true;
+
+      allow create: if isTeacher()
+        && isValidId(questionId)
+        && isValidCustomQuestion(incoming())
+        && incoming().teacherUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && hasValidQuestionCategory(incoming().categoryId);
+
+      allow update: if isTeacher()
+        && isValidId(questionId)
+        && isValidCustomQuestion(incoming())
+        && incoming().teacherUid == existing().teacherUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && hasValidQuestionCategory(incoming().categoryId)
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'categoryId',
+          'question',
+          'options',
+          'correctIndex',
+          'hint',
+          'explanation',
+          'points',
+          'isActive',
+          'updatedAt'
+        ]);
+
+      allow delete: if isTeacher() && isValidId(questionId);
+    }
+
+    // Collection 5: Admins Registry (strictly locked - single-account Teacher auth enforced via email_verified + exact email)
+    match /admins/{adminUid} {
+      allow read, write: if false;
+    }
+  }
+}
