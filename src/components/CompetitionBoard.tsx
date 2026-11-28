@@ -68,6 +68,7 @@ import {
 import { labSound } from '../utils/sound';
 import { ClassTop3Leaderboard } from './ClassTop3Leaderboard';
 import { TeacherQuestionManager } from './TeacherQuestionManager';
+import { submissionToPodiumEntry, Top3Podium } from './Top3Podium';
 
 export interface ActiveStudentSession {
   classId: string;
@@ -1481,7 +1482,7 @@ export function CompetitionBoard({
                     : 'border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
                 }`}
               >
-                Top 3 theo từng lớp
+                Bục vinh danh Top 3
               </button>
               <button
                 type="button"
@@ -1562,36 +1563,50 @@ export function CompetitionBoard({
                 setRankClassId(clsId);
                 setRankingScope('class');
               }}
+              onSelectGradeDetail={(grade) => {
+                setRankGrade(grade);
+                setRankingScope('grade');
+              }}
             />
           ) : rankingScope === 'class' && publicRankClassStats ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">
-                    Bảng xếp hạng Lớp {publicRankClassStats.cls.className} (Khối {publicRankClassStats.cls.grade})
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Xếp hạng theo Điểm cao nhất → Thời gian làm bài nhanh nhất
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-4 text-xs font-semibold text-slate-700 font-mono-num">
-                  <span>
-                    Đã nộp: <strong>{publicRankClassStats.bestForClass.length}/{publicRankClassStats.cls.students.length}</strong> ({publicRankClassStats.participationPct}%)
-                  </span>
-                  <span>
-                    TB lớp: <strong className="text-sky-800">{publicRankClassStats.avgScore} điểm</strong>
-                  </span>
-                  <span>
-                    TB thời gian: <strong className="text-emerald-700">{formatDuration(publicRankClassStats.avgDurationSec)}</strong>
-                  </span>
-                </div>
-              </div>
+            <div className="space-y-5">
+              <Top3Podium
+                entries={publicRankClassStats.bestForClass
+                  .slice(0, 3)
+                  .map((s) => submissionToPodiumEntry(s))}
+                size="featured"
+                heading={`Bục vinh danh Top 3 — Lớp ${publicRankClassStats.cls.className}`}
+                subheading={`Khối ${publicRankClassStats.cls.grade} · ${publicRankClassStats.bestForClass.length}/${publicRankClassStats.cls.students.length} học sinh đã nộp bài`}
+              />
 
-              {publicRankClassStats.bestForClass.length === 0 ? (
-                <p className="py-8 text-center text-sm text-slate-500">
-                  Lớp {publicRankClassStats.cls.className} chưa có học sinh nào nộp bài.
-                </p>
-              ) : (
+              <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">
+                      Bảng xếp hạng Lớp {publicRankClassStats.cls.className} (Khối {publicRankClassStats.cls.grade})
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Xếp hạng theo Điểm cao nhất → Thời gian làm bài nhanh nhất
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-xs font-semibold text-slate-700 font-mono-num">
+                    <span>
+                      Đã nộp: <strong>{publicRankClassStats.bestForClass.length}/{publicRankClassStats.cls.students.length}</strong> ({publicRankClassStats.participationPct}%)
+                    </span>
+                    <span>
+                      TB lớp: <strong className="text-sky-800">{publicRankClassStats.avgScore} điểm</strong>
+                    </span>
+                    <span>
+                      TB thời gian: <strong className="text-emerald-700">{formatDuration(publicRankClassStats.avgDurationSec)}</strong>
+                    </span>
+                  </div>
+                </div>
+
+                {publicRankClassStats.bestForClass.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-slate-500">
+                    Lớp {publicRankClassStats.cls.className} chưa có học sinh nào nộp bài.
+                  </p>
+                ) : (
                 <div className="mt-3 overflow-x-auto">
                   <table className="w-full min-w-[640px] border-collapse text-left text-sm">
                     <thead>
@@ -1631,9 +1646,20 @@ export function CompetitionBoard({
                   </table>
                 </div>
               )}
+              </div>
             </div>
           ) : (
             <div className="space-y-5">
+              {/* Grade Top 3 Victory Podium */}
+              <Top3Podium
+                entries={publicGradeData.gradeBestSubs
+                  .slice(0, 3)
+                  .map((s) => submissionToPodiumEntry(s, { showClassName: true }))}
+                size="featured"
+                heading={`Bục vinh danh Top 3 toàn Khối ${rankGrade}`}
+                subheading={`${publicGradeData.classSummaries.length} lớp · ${publicGradeData.gradeBestSubs.length} học sinh đã nộp bài`}
+              />
+
               {/* Grade Class-vs-Class Standings */}
               <div className="rounded-2xl border border-slate-200 bg-white p-5">
                 <h3 className="text-lg font-bold text-slate-900">
@@ -2633,11 +2659,21 @@ export function CompetitionBoard({
                   </div>
 
                   {teacherRankScope === 'grade' ? (
-                    <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-                      <div className="rounded-2xl border border-slate-200 bg-white p-5 lg:col-span-5">
-                        <h4 className="text-base font-bold text-slate-900">
-                          Xếp hạng các lớp — Khối {teacherRankGrade}
-                        </h4>
+                    <div className="space-y-5">
+                      <Top3Podium
+                        entries={teacherGradeData.gradeBestSubs
+                          .slice(0, 3)
+                          .map((s) => submissionToPodiumEntry(s, { showClassName: true }))}
+                        size="featured"
+                        heading={`Bục vinh danh Top 3 toàn Khối ${teacherRankGrade}`}
+                        subheading={`${teacherGradeData.classSummaries.length} lớp · ${teacherGradeData.gradeBestSubs.length} học sinh đã nộp bài`}
+                      />
+
+                      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-5 lg:col-span-5">
+                          <h4 className="text-base font-bold text-slate-900">
+                            Xếp hạng các lớp — Khối {teacherRankGrade}
+                          </h4>
                         {teacherGradeData.classSummaries.length === 0 ? (
                           <p className="py-6 text-center text-sm text-slate-500">
                             Chưa có lớp nào trong Khối {teacherRankGrade}.
@@ -2715,17 +2751,28 @@ export function CompetitionBoard({
                           </div>
                         )}
                       </div>
+                      </div>
                     </div>
                   ) : teacherClassRanking ? (
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                      <h4 className="text-base font-bold text-slate-900">
-                        Bảng xếp hạng Lớp {teacherClassRanking.cls.className} (Khối {teacherClassRanking.cls.grade})
-                      </h4>
-                      {teacherClassRanking.bestForClass.length === 0 ? (
-                        <p className="py-6 text-center text-sm text-slate-500">
-                          Lớp {teacherClassRanking.cls.className} chưa có học sinh nộp bài.
-                        </p>
-                      ) : (
+                    <div className="space-y-5">
+                      <Top3Podium
+                        entries={teacherClassRanking.bestForClass
+                          .slice(0, 3)
+                          .map((s) => submissionToPodiumEntry(s))}
+                        size="featured"
+                        heading={`Bục vinh danh Top 3 — Lớp ${teacherClassRanking.cls.className}`}
+                        subheading={`Khối ${teacherClassRanking.cls.grade} · ${teacherClassRanking.bestForClass.length}/${teacherClassRanking.cls.students.length} học sinh đã nộp bài`}
+                      />
+
+                      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                        <h4 className="text-base font-bold text-slate-900">
+                          Bảng xếp hạng Lớp {teacherClassRanking.cls.className} (Khối {teacherClassRanking.cls.grade})
+                        </h4>
+                        {teacherClassRanking.bestForClass.length === 0 ? (
+                          <p className="py-6 text-center text-sm text-slate-500">
+                            Lớp {teacherClassRanking.cls.className} chưa có học sinh nộp bài.
+                          </p>
+                        ) : (
                         <div className="mt-3 overflow-x-auto">
                           <table className="w-full min-w-[580px] border-collapse text-left text-sm">
                             <thead>
@@ -2760,7 +2807,8 @@ export function CompetitionBoard({
                             </tbody>
                           </table>
                         </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   ) : null}
                 </div>
